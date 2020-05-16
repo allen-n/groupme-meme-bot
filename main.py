@@ -3,6 +3,8 @@ from flask import Flask, request
 # Groupy imports
 from groupy.client import Client
 from groupy.api.groups import Group
+from groupy.api.bot import Bot
+from groupy import attachments
 import groupy.exceptions
 
 # other imports
@@ -14,15 +16,26 @@ import time
 import datetime
 
 # Env setup
-logging.basicConfig(stream=sys.stderr, level=logging.INFO)
-token = None
-if(os.path.exists("./apitoken.json")):
-    with open('./apitoken.json') as f:
-        token = json.load(f)["token"]
-else:
-    token = os.environ.get("API_TOKEN")  # For deployment on Heroku
+is_debug = True
+logging_level = logging.INFO
+api_token = None
+memebot_token = None
 
-client = Client.from_token(token)
+if(os.path.exists("./apitoken.json")): # Only true locally
+    with open('./apitoken.json') as f:
+        tokens = json.load(f)
+        api_token = tokens["api_token"]
+        memebot_token = tokens["memebot_token"]
+else:
+    # For deployment on Heroku
+    api_token = os.environ.get("API_TOKEN")
+    memebot_token = os.environ.get("MEMEBOT_TOKEN")
+    is_debug = False
+    logging_level = logging.DEBUG
+    
+   
+logging.basicConfig(stream=sys.stderr, level=logging_level)
+client = Client.from_token(api_token)
 app = Flask(__name__)
 
 # Constants
@@ -39,10 +52,19 @@ DELTAS = {
 def home():
     data = request.get_json()
     logging.info("Got Request :: {}".format(data))
+    bot = get_bot(GROUP_ID, memebot_token)
+    bot.post("HI! I heard: {}".format(data))
     return "ok", 200
 
 
 def name_to_grp(client: Client, name: str) -> Group:
+    '''
+    @args:
+    * client: The current Groupme Client
+    * name: The name of the group to return
+    @return:
+    * Group: The group in client with .name attribute name
+    '''
     groups = client.groups.list_all()
     my_group = None
     for group in groups:
@@ -62,6 +84,16 @@ def rejoin_if_out(client: Client, id: str) -> None:
         logging.debug("Not a member of {}, rejoining.".format(group.name))
         group.rejoin()
 
+def get_bot(group_id: str, bot_id: str) -> Bot:
+    group = client.groups.get(group_id)
+    bots = group._bots.list()
+    ret_bot = None
+    for bot in bots:
+        if bot.bot_id == bot_id:
+            ret_bot = bot
+            break
+    return ret_bot
+
 
 if __name__ == "__main__":
     # group = client.groups.get("14970560")  # Steak Philly ID
@@ -78,5 +110,13 @@ if __name__ == "__main__":
 
     new_message = "MEME AWARDS:\nMSG: {}, POSTER: {}, LIKES: {}".format(
         best_msg.text, best_msg.name, len(best_msg.favorited_by))
-    group.post(text=new_message, attachments=best_msg.attachments)
-    # app.run(debug=True)
+    # group.post(text=new_message, attachments=best_msg.attachments)
+    bots = group._bots.list()
+    memebot = None
+    for bot in bots:
+        if bot.bot_id == memebot_token:
+            memebot = bot
+            break
+    if memebot:
+        memebot.post(text=new_message, attachments=best_msg.attachments)
+    app.run(debug=is_debug)  # TODO: Turn off for deploy
