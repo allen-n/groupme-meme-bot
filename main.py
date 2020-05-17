@@ -70,7 +70,7 @@ def home():
     return "ok", 200
 
 
-def get_meme():
+def get_meme() -> str:
     # memes from here: https://github.com/R3l3ntl3ss/Meme_Api
     r = requests.get("https://meme-api.herokuapp.com/gimme")
     return json.loads(r.text)
@@ -85,7 +85,7 @@ def handle_bot_response(txt: str) -> None:
         if score >= 70:
             bot_string = "I think you said {}, is that right? Confidence: {}%".format(
                 word, score)
-            # handle_command(word)
+            handle_command(word, bot)
         else:
             bot_string = "I'm not sure what you said. Confidence is less than {}%".format(
                 score)
@@ -95,8 +95,26 @@ def handle_bot_response(txt: str) -> None:
             COMMAND_KEY)
         bot.post(text=bot_string)
 
-# def handle_command(cmd_word: str) -> None:
-    
+
+def send_meme(bot: Bot) -> None:
+    meme_json = get_meme()
+    meme_url = meme_json.get('url', '')
+    meme_source = meme_json.get('postLink', '')
+    meme_title = meme_json.get('title', '')
+    img = attachments.Image(
+        meme_url, source_url=meme_source)
+    bot.post(text=meme_title, attachments=[img])
+
+
+def handle_command(cmd_word: str, bot: Bot) -> None:
+    switcher = {
+        "meme": send_meme
+    }
+    func = switcher.get(cmd_word, None)
+    if func is not None:
+        func(bot)
+    return None
+
 
 def name_to_grp(new_client: Client, name: str) -> Group:
     '''
@@ -168,5 +186,7 @@ if __name__ == "__main__":
     # group = client.groups.get("59823729")  # Testgroup ID
 
     port = int(os.environ.get('PORT', 5000))
-    # app.run(debug=is_debug, host="0.0.0.0", port=port)
-    print(get_meme())
+    app.run(debug=is_debug, host="0.0.0.0", port=port)
+
+    # bot = get_bot(GROUP_ID, memebot_token)
+    # handle_command("meme", bot)
