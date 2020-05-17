@@ -17,7 +17,6 @@ import logging
 import sys
 import json
 import time
-import datetime
 import requests
 
 # Env setup
@@ -46,14 +45,17 @@ app = Flask(__name__)
 # Constants
 GROUP_ID = "59823729"
 DELTAS = {  # all in seconds
-    "day": 60 * 60 * 24,
-    "week": 60 * 60 * 24 * 7,
-    "month": 60 * 60 * 24 * 7 * 4,
-    "year": 60 * 60 * 24 * 365
+    "day": 86400,
+    "week": 604800,
+    "month": 2628000,
+    "year": 31540000
 }
+
 # Create the command strings for the bot
 COMMAND_KEY = "memebot"
-COMMANDS = ["week", "month", "year", "meme"]
+COMMANDS = ["meme", "help"]
+for k in DELTAS.keys():
+    COMMANDS.append(k)
 
 
 @app.route("/", methods=["POST"])
@@ -67,10 +69,12 @@ def home():
 
     return "ok", 200
 
+
 def get_meme():
     # memes from here: https://github.com/R3l3ntl3ss/Meme_Api
     r = requests.get("https://meme-api.herokuapp.com/gimme")
     return json.loads(r.text)
+
 
 def handle_bot_response(txt: str) -> None:
     bot = get_bot(GROUP_ID, memebot_token)
@@ -81,16 +85,20 @@ def handle_bot_response(txt: str) -> None:
         if score >= 70:
             bot_string = "I think you said {}, is that right? Confidence: {}%".format(
                 word, score)
+            # handle_command(word)
         else:
             bot_string = "I'm not sure what you said. Confidence is less than {}%".format(
                 score)
+            bot.post(text=bot_string)
     else:
         bot_string = "That wasn't a command, commands must have the work '{}' in them.".format(
             COMMAND_KEY)
-    bot.post(text=bot_string)
+        bot.post(text=bot_string)
 
+# def handle_command(cmd_word: str) -> None:
+    
 
-def name_to_grp(client: Client, name: str) -> Group:
+def name_to_grp(new_client: Client, name: str) -> Group:
     '''
     @args:
     * client: The current Groupme Client
@@ -98,7 +106,7 @@ def name_to_grp(client: Client, name: str) -> Group:
     @return:
     * Group: The group in client with .name attribute name
     '''
-    groups = client.groups.list_all()
+    groups = new_client.groups.list_all()
     my_group = None
     for group in groups:
         if group.name == name:
@@ -107,20 +115,22 @@ def name_to_grp(client: Client, name: str) -> Group:
     return my_group
 
 
-def rejoin_if_out(client: Client, id: str) -> None:
-    group = client.groups.get(id)
+def rejoin_if_out(new_client: Client, group_id: str) -> None:
+    group = new_client.groups.get(group_id)
     try:
         member = group.get_membership()
         logging.debug("Already in group {}. Member ID: {}".format(
             group.name, member.id))
     except groupy.exceptions.MissingMembershipError as e:
-        logging.debug("Not a member of {}, rejoining.".format(group.name))
+        logging.debug(
+            "Not a member of {}, rejoining. Error: {}".format(group.name, e))
         group.rejoin()
 
 
 def get_bot(group_id: str, bot_id: str) -> Bot:
     group = client.groups.get(group_id)
-    bots = group._bots.list()
+    # Intentional private member access, no other way to access bots in group via api
+    bots = group._bots.list()  # skipcq: PYL-W0212
     ret_bot = None
     for bot in bots:
         if bot.bot_id == bot_id:
@@ -129,15 +139,21 @@ def get_bot(group_id: str, bot_id: str) -> Bot:
     return ret_bot
 
 
-def find_best_post(group: Group, DELTAS: [str]) -> str:
+def find_best_post(group: Group, deltas: {str: int}) -> str:
     '''
     Return info about the most liked message
+
+    :param Group group: a group object
+    :param deltas {str:int}: a dict mapping time period 
+    strings (i.e. week) to time in seconds
+    :return: String containing info about the most liked post
+    :rtype: str
     '''
     now = time.time()
     best_msg = None
     for message in group.messages.list_all():
         delta = now - message.created_at.timestamp()
-        if delta > 12 * DELTAS["month"]:
+        if delta > 12 * deltas["month"]:
             break
         if not best_msg or len(message.favorited_by) > len(best_msg.favorited_by):
             best_msg = message
