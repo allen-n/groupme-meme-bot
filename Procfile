@@ -1,0 +1,1 @@
+web gunicorn --bind 0.0.0.0:$PORT main:app ps:scale web=1

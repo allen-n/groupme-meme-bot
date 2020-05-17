@@ -1,3 +1,4 @@
 env
-*.json
+apitoken.json
+groups.json
 .vscode

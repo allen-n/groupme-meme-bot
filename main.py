@@ -3,7 +3,7 @@ from flask import Flask, request
 # Groupy imports
 from groupy.client import Client
 from groupy.api.groups import Group
-from groupy.api.bot import Bot
+from groupy.api.bots import Bot
 from groupy import attachments
 import groupy.exceptions
 
@@ -17,11 +17,11 @@ import datetime
 
 # Env setup
 is_debug = True
-logging_level = logging.INFO
+logging_level = logging.DEBUG
 api_token = None
 memebot_token = None
 
-if(os.path.exists("./apitoken.json")): # Only true locally
+if(os.path.exists("./apitoken.json")):  # Only true locally
     with open('./apitoken.json') as f:
         tokens = json.load(f)
         api_token = tokens["api_token"]
@@ -31,9 +31,9 @@ else:
     api_token = os.environ.get("API_TOKEN")
     memebot_token = os.environ.get("MEMEBOT_TOKEN")
     is_debug = False
-    logging_level = logging.DEBUG
-    
-   
+    logging_level = logging.INFO
+
+
 logging.basicConfig(stream=sys.stderr, level=logging_level)
 client = Client.from_token(api_token)
 app = Flask(__name__)
@@ -51,9 +51,11 @@ DELTAS = {
 @app.route("/", methods=["POST"])
 def home():
     data = request.get_json()
-    logging.info("Got Request :: {}".format(data))
-    bot = get_bot(GROUP_ID, memebot_token)
-    bot.post("HI! I heard: {}".format(data))
+    logging.info("Message Text={}, Sender ID={}, Sender Name={}".format(
+        data['text'], data['sender_id'], data['name']))
+    if data["sender_type"] == "bot":  # Bots cannot reply to bots
+        bot = get_bot(GROUP_ID, memebot_token)
+        bot.post("HI! I heard: {}".format(data))
     return "ok", 200
 
 
@@ -84,6 +86,7 @@ def rejoin_if_out(client: Client, id: str) -> None:
         logging.debug("Not a member of {}, rejoining.".format(group.name))
         group.rejoin()
 
+
 def get_bot(group_id: str, bot_id: str) -> Bot:
     group = client.groups.get(group_id)
     bots = group._bots.list()
@@ -99,24 +102,26 @@ if __name__ == "__main__":
     # group = client.groups.get("14970560")  # Steak Philly ID
     group = client.groups.get("59823729")  # Testgroup ID
 
-    now = time.time()
-    best_msg = None
-    for message in group.messages.list_all():
-        delta = now - message.created_at.timestamp()
-        if delta > 12 * DELTAS["month"]:
-            break
-        if not best_msg or len(message.favorited_by) > len(best_msg.favorited_by):
-            best_msg = message
+    # now = time.time()
+    # best_msg = None
+    # for message in group.messages.list_all():
+    #     delta = now - message.created_at.timestamp()
+    #     if delta > 12 * DELTAS["month"]:
+    #         break
+    #     if not best_msg or len(message.favorited_by) > len(best_msg.favorited_by):
+    #         best_msg = message
 
-    new_message = "MEME AWARDS:\nMSG: {}, POSTER: {}, LIKES: {}".format(
-        best_msg.text, best_msg.name, len(best_msg.favorited_by))
-    # group.post(text=new_message, attachments=best_msg.attachments)
-    bots = group._bots.list()
-    memebot = None
-    for bot in bots:
-        if bot.bot_id == memebot_token:
-            memebot = bot
-            break
-    if memebot:
-        memebot.post(text=new_message, attachments=best_msg.attachments)
-    app.run(debug=is_debug)  # TODO: Turn off for deploy
+    # new_message = "MEME AWARDS:\nMSG: {}, POSTER: {}, LIKES: {}".format(
+    #     best_msg.text, best_msg.name, len(best_msg.favorited_by))
+    # bots = group._bots.list()
+    # memebot = None
+    # for bot in bots:
+    #     if bot.bot_id == memebot_token:
+    #         memebot = bot
+    #         break
+    # if memebot:
+    #     memebot.post(text=new_message, attachments=best_msg.attachments)
+
+    port = int(os.environ.get('PORT', 5000))
+    # TODO: Turn off for deploy
+    app.run(debug=is_debug, host="0.0.0.0", port=port)
