@@ -18,6 +18,7 @@ import sys
 import json
 import time
 import datetime
+import requests
 
 # Env setup
 is_debug = True
@@ -44,7 +45,7 @@ app = Flask(__name__)
 
 # Constants
 GROUP_ID = "59823729"
-DELTAS = { # all in seconds
+DELTAS = {  # all in seconds
     "day": 60 * 60 * 24,
     "week": 60 * 60 * 24 * 7,
     "month": 60 * 60 * 24 * 7 * 4,
@@ -53,6 +54,7 @@ DELTAS = { # all in seconds
 # Create the command strings for the bot
 COMMAND_KEY = "memebot"
 COMMANDS = ["week", "month", "year", "meme"]
+
 
 @app.route("/", methods=["POST"])
 def home():
@@ -65,11 +67,15 @@ def home():
 
     return "ok", 200
 
+def get_meme():
+    # memes from here: https://github.com/R3l3ntl3ss/Meme_Api
+    r = requests.get("https://meme-api.herokuapp.com/gimme")
+    return json.loads(r.text)
 
 def handle_bot_response(txt: str) -> None:
     bot = get_bot(GROUP_ID, memebot_token)
     bot_string = ''
-    if re.search(COMMAND_KEY, txt):
+    if re.search(COMMAND_KEY, txt.lower()):  # command key can be capitalized
         cmd = re.sub(COMMAND_KEY, '', txt)
         word, score = process.extractOne(cmd, COMMANDS)
         if score >= 70:
@@ -146,4 +152,5 @@ if __name__ == "__main__":
     # group = client.groups.get("59823729")  # Testgroup ID
 
     port = int(os.environ.get('PORT', 5000))
-    app.run(debug=is_debug, host="0.0.0.0", port=port)
+    # app.run(debug=is_debug, host="0.0.0.0", port=port)
+    print(get_meme())
