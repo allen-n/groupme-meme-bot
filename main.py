@@ -7,6 +7,10 @@ from groupy.api.bots import Bot
 from groupy import attachments
 import groupy.exceptions
 
+# Fuzzy matching
+from fuzzywuzzy import process
+import re
+
 # other imports
 import os
 import logging
@@ -40,13 +44,15 @@ app = Flask(__name__)
 
 # Constants
 GROUP_ID = "59823729"
-DELTAS = {
+DELTAS = { # all in seconds
     "day": 60 * 60 * 24,
     "week": 60 * 60 * 24 * 7,
     "month": 60 * 60 * 24 * 7 * 4,
     "year": 60 * 60 * 24 * 365
 }
-
+# Create the command strings for the bot
+COMMAND_KEY = "memebot"
+COMMANDS = ["week", "month", "year", "meme"]
 
 @app.route("/", methods=["POST"])
 def home():
@@ -55,9 +61,27 @@ def home():
         data['text'], data['sender_id'], data['name'])
     logging.info(data_str)
     if data["sender_type"] != "bot":  # Bots cannot reply to bots
-        bot = get_bot(GROUP_ID, memebot_token)
-        bot.post("HI! I heard: {}".format(data_str))
+        handle_bot_response(data['text'])
+
     return "ok", 200
+
+
+def handle_bot_response(txt: str) -> None:
+    bot = get_bot(GROUP_ID, memebot_token)
+    bot_string = ''
+    if re.search(COMMAND_KEY, txt):
+        cmd = re.sub(COMMAND_KEY, '', txt)
+        word, score = process.extractOne(cmd, COMMANDS)
+        if score >= 70:
+            bot_string = "I think you said {}, is that right? Confidence: {}%".format(
+                word, score)
+        else:
+            bot_string = "I'm not sure what you said. Confidence is less than {}%".format(
+                score)
+    else:
+        bot_string = "That wasn't a command, commands must have the work '{}' in them.".format(
+            COMMAND_KEY)
+    bot.post(text=bot_string)
 
 
 def name_to_grp(client: Client, name: str) -> Group:
@@ -99,29 +123,27 @@ def get_bot(group_id: str, bot_id: str) -> Bot:
     return ret_bot
 
 
+def find_best_post(group: Group, DELTAS: [str]) -> str:
+    '''
+    Return info about the most liked message
+    '''
+    now = time.time()
+    best_msg = None
+    for message in group.messages.list_all():
+        delta = now - message.created_at.timestamp()
+        if delta > 12 * DELTAS["month"]:
+            break
+        if not best_msg or len(message.favorited_by) > len(best_msg.favorited_by):
+            best_msg = message
+
+    new_message = "MEME AWARDS:\nMSG: {}, POSTER: {}, LIKES: {}".format(
+        best_msg.text, best_msg.name, len(best_msg.favorited_by))
+    return new_message
+
+
 if __name__ == "__main__":
     # group = client.groups.get("14970560")  # Steak Philly ID
-    group = client.groups.get("59823729")  # Testgroup ID
-
-    # now = time.time()
-    # best_msg = None
-    # for message in group.messages.list_all():
-    #     delta = now - message.created_at.timestamp()
-    #     if delta > 12 * DELTAS["month"]:
-    #         break
-    #     if not best_msg or len(message.favorited_by) > len(best_msg.favorited_by):
-    #         best_msg = message
-
-    # new_message = "MEME AWARDS:\nMSG: {}, POSTER: {}, LIKES: {}".format(
-    #     best_msg.text, best_msg.name, len(best_msg.favorited_by))
-    # bots = group._bots.list()
-    # memebot = None
-    # for bot in bots:
-    #     if bot.bot_id == memebot_token:
-    #         memebot = bot
-    #         break
-    # if memebot:
-    #     memebot.post(text=new_message, attachments=best_msg.attachments)
+    # group = client.groups.get("59823729")  # Testgroup ID
 
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=is_debug, host="0.0.0.0", port=port)
