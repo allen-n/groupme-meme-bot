@@ -53,7 +53,7 @@ def home():
     data = request.get_json()
     logging.info("Message Text={}, Sender ID={}, Sender Name={}".format(
         data['text'], data['sender_id'], data['name']))
-    if data["sender_type"] == "bot":  # Bots cannot reply to bots
+    if data["sender_type"] != "bot":  # Bots cannot reply to bots
         bot = get_bot(GROUP_ID, memebot_token)
         bot.post("HI! I heard: {}".format(data))
     return "ok", 200
