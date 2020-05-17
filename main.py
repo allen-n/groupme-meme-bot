@@ -43,7 +43,11 @@ client = Client.from_token(api_token)
 app = Flask(__name__)
 
 # Constants
-GROUP_ID = "59823729"
+GROUP_ID = "59823729"  # Testgroup
+GROUP_IDS = {"TESTGROUP": "59823729", "STEAK_PHILLY": "14970560"}
+
+# group = client.groups.get("")  # Steak Philly ID
+# group = client.groups.get("59823729")  # Testgroup ID
 DELTAS = {  # all in seconds
     "day": 86400,
     "week": 604800,
@@ -54,8 +58,10 @@ DELTAS = {  # all in seconds
 # Create the command strings for the bot
 COMMAND_KEY = "memebot"
 COMMANDS = ["meme", "help"]
-for k in DELTAS.keys():
+for k in DELTAS:
     COMMANDS.append(k)
+
+# TODO: Refactor into memebot class!
 
 
 @app.route("/", methods=["POST"])
@@ -79,21 +85,20 @@ def get_meme() -> str:
 def handle_bot_response(txt: str) -> None:
     bot = get_bot(GROUP_ID, memebot_token)
     bot_string = ''
-    if re.search(COMMAND_KEY, txt.lower()):  # command key can be capitalized
+    txt = txt.lower()
+    if re.search(COMMAND_KEY, txt):  # command key can be capitalized
         cmd = re.sub(COMMAND_KEY, '', txt)
+        logging.info(cmd)
         word, score = process.extractOne(cmd, COMMANDS)
         if score >= 70:
             bot_string = "I think you said {}, is that right? Confidence: {}%".format(
                 word, score)
+            bot.post(text=bot_string)
             handle_command(word, bot)
         else:
-            bot_string = "I'm not sure what you said. Confidence is less than {}%".format(
-                score)
+            bot_string = "I'm not sure what you said (confidence is only {}%). Try saying '{} help'".format(
+                score, COMMAND_KEY)
             bot.post(text=bot_string)
-    else:
-        bot_string = "That wasn't a command, commands must have the work '{}' in them.".format(
-            COMMAND_KEY)
-        bot.post(text=bot_string)
 
 
 def send_meme(bot: Bot) -> None:
@@ -106,9 +111,17 @@ def send_meme(bot: Bot) -> None:
     bot.post(text=meme_title, attachments=[img])
 
 
+def send_help(bot: Bot) -> None:
+    message = "Tell me what to do by sending the message {} <command>, where <command> can be:\n".format(COMMAND_KEY)
+    message += "* meme: I'll send a meme\n* help: I'll say this message again\n"
+    message += "* day/month/year: I'll return the most liked post over that time interval.\n* More stuff tbd"
+    bot.post(text=message)
+
+
 def handle_command(cmd_word: str, bot: Bot) -> None:
     switcher = {
-        "meme": send_meme
+        "meme": send_meme,
+        "help": send_help
     }
     func = switcher.get(cmd_word, None)
     if func is not None:
@@ -182,11 +195,8 @@ def find_best_post(group: Group, deltas: {str: int}) -> str:
 
 
 if __name__ == "__main__":
-    # group = client.groups.get("14970560")  # Steak Philly ID
-    # group = client.groups.get("59823729")  # Testgroup ID
 
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=is_debug, host="0.0.0.0", port=port)
 
-    # bot = get_bot(GROUP_ID, memebot_token)
-    # handle_command("meme", bot)
+    # handle_bot_response("Memebot halp")  # Testing
