@@ -51,11 +51,12 @@ DELTAS = {
 @app.route("/", methods=["POST"])
 def home():
     data = request.get_json()
-    logging.info("Message Text={}, Sender ID={}, Sender Name={}".format(
-        data['text'], data['sender_id'], data['name']))
+    data_str = "Message Text={}, Sender ID={}, Sender Name={}".format(
+        data['text'], data['sender_id'], data['name'])
+    logging.info(data_str)
     if data["sender_type"] != "bot":  # Bots cannot reply to bots
         bot = get_bot(GROUP_ID, memebot_token)
-        bot.post("HI! I heard: {}".format(data))
+        bot.post("HI! I heard: {}".format(data_str))
     return "ok", 200
 
 
@@ -123,5 +124,4 @@ if __name__ == "__main__":
     #     memebot.post(text=new_message, attachments=best_msg.attachments)
 
     port = int(os.environ.get('PORT', 5000))
-    # TODO: Turn off for deploy
     app.run(debug=is_debug, host="0.0.0.0", port=port)
