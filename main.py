@@ -4,6 +4,7 @@ from flask import Flask, request
 from groupy.client import Client
 from groupy.api.groups import Group
 from groupy.api.bots import Bot
+from groupy.api.messages import Message
 from groupy import attachments
 import groupy.exceptions
 
@@ -88,12 +89,11 @@ def handle_bot_response(txt: str) -> None:
     txt = txt.lower()
     if re.search(COMMAND_KEY, txt):  # command key can be capitalized
         cmd = re.sub(COMMAND_KEY, '', txt)
-        logging.info(cmd)
         word, score = process.extractOne(cmd, COMMANDS)
         if score >= 70:
-            bot_string = "I think you said {}, is that right? Confidence: {}%".format(
-                word, score)
-            bot.post(text=bot_string)
+            # bot_string = "I think you said {}, is that right? Confidence: {}%".format(
+            #     word, score)
+            # bot.post(text=bot_string)
             handle_command(word, bot)
         else:
             bot_string = "I'm not sure what you said (confidence is only {}%). Try saying '{} help'".format(
@@ -112,7 +112,8 @@ def send_meme(bot: Bot) -> None:
 
 
 def send_help(bot: Bot) -> None:
-    message = "Tell me what to do by sending the message {} <command>, where <command> can be:\n".format(COMMAND_KEY)
+    message = "Tell me what to do by sending the message {} <command>, where <command> can be:\n".format(
+        COMMAND_KEY)
     message += "* meme: I'll send a meme\n* help: I'll say this message again\n"
     message += "* day/month/year: I'll return the most liked post over that time interval.\n* More stuff tbd"
     bot.post(text=message)
@@ -126,6 +127,11 @@ def handle_command(cmd_word: str, bot: Bot) -> None:
     func = switcher.get(cmd_word, None)
     if func is not None:
         func(bot)
+    else:
+        # Hitting this else, the command must be a command word not in the switcher
+        group = client.groups.get(GROUP_ID)
+        text, attachment = find_best_post(group, cmd_word)
+        bot.post(text=text, attachments=attachment)
     return None
 
 
@@ -170,28 +176,30 @@ def get_bot(group_id: str, bot_id: str) -> Bot:
     return ret_bot
 
 
-def find_best_post(group: Group, deltas: {str: int}) -> str:
+def find_best_post(group: Group, time_str: str) -> (str, attachments):
     '''
     Return info about the most liked message
 
     :param Group group: a group object
     :param deltas {str:int}: a dict mapping time period 
     strings (i.e. week) to time in seconds
-    :return: String containing info about the most liked post
-    :rtype: str
+    :return: String containing info about the most liked post, and the posts attachments
+    :rtype: (str, attachments)
     '''
     now = time.time()
     best_msg = None
     for message in group.messages.list_all():
         delta = now - message.created_at.timestamp()
-        if delta > 12 * deltas["month"]:
+        if delta > DELTAS[time_str]:
             break
         if not best_msg or len(message.favorited_by) > len(best_msg.favorited_by):
             best_msg = message
 
-    new_message = "MEME AWARDS:\nMSG: {}, POSTER: {}, LIKES: {}".format(
-        best_msg.text, best_msg.name, len(best_msg.favorited_by))
-    return new_message
+    # new_message = "MEME AWARDS:\nMSG: {}, POSTER: {}, LIKES: {}".format(
+    #     best_msg.text, best_msg.name, len(best_msg.favorited_by))
+    text = "Best post of the last {} by {} with {} likes:\n".format(
+        time_str, best_msg.name, len(best_msg.favorited_by)) + best_msg.text
+    return (text, best_msg.attachments)
 
 
 if __name__ == "__main__":
@@ -199,4 +207,4 @@ if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=is_debug, host="0.0.0.0", port=port)
 
-    # handle_bot_response("Memebot halp")  # Testing
+    # handle_bot_response("Memebot week")  # Testing
