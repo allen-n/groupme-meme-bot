@@ -41,8 +41,8 @@ else:
     logging_level = logging.INFO
 
 # Constants
-GROUP_ID = "59823729"  # Testgroup
 GROUP_IDS = {"TESTGROUP": "59823729", "STEAK_PHILLY": "14970560"}
+GROUP_ID = GROUP_IDS["STEAK_PHILLY"]
 
 logging.basicConfig(stream=sys.stderr, level=logging_level)
 client = Client.from_token(api_token)
