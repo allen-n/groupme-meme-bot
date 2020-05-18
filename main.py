@@ -32,8 +32,7 @@ if(os.path.exists("./apitoken.json")):  # Only true locally
     with open('./apitoken.json') as f:
         tokens = json.load(f)
         api_token = tokens["api_token"]
-        memebot_token = tokens["memebot_token"]
-        testbot_token = tokens["testbot_token"]
+        memebot_token = tokens["testbot_token"]
 else:
     # For deployment on Heroku
     api_token = os.environ.get("API_TOKEN")
