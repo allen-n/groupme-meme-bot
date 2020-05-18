@@ -98,7 +98,6 @@ class Memebot:
                     score, self._command_key)
                 bot.post(text=bot_string)
 
-
     def send_meme(self, bot: Bot) -> None:
         meme_json = self.get_meme()
         meme_url = meme_json.get('url', '')
@@ -108,14 +107,12 @@ class Memebot:
             meme_url, source_url=meme_source)
         bot.post(text=meme_title, attachments=[img])
 
-
     def send_help(self, bot: Bot) -> None:
         message = "Tell me what to do by sending the message {} <command>, where <command> can be:\n".format(
             self._command_key)
         message += "* meme: I'll send a meme\n* help: I'll say this message again\n"
         message += "* day/month/year: I'll return the most liked post over that time interval.\n* More stuff tbd"
         bot.post(text=message)
-
 
     def handle_command(self, cmd_word: str, bot: Bot) -> None:
         switcher = {
@@ -131,7 +128,6 @@ class Memebot:
             text, attachment = self.find_best_post(group, cmd_word)
             bot.post(text=text, attachments=attachment)
         return None
-
 
     def name_to_grp(self, name: str) -> Group:
         '''
@@ -149,7 +145,6 @@ class Memebot:
                 break
         return my_group
 
-
     def get_bot(self, bot_id: str) -> Bot:
         ret_bot = None
         if self._bot is None:
@@ -166,7 +161,6 @@ class Memebot:
             ret_bot = self._bot
 
         return ret_bot
-
 
     def find_best_post(self, group: Group, time_str: str) -> (str, attachments):
         '''
@@ -190,5 +184,7 @@ class Memebot:
         # new_message = "MEME AWARDS:\nMSG: {}, POSTER: {}, LIKES: {}".format(
         #     best_msg.text, best_msg.name, len(best_msg.favorited_by))
         text = "Best post of the last {} by {} with {} likes:\n".format(
-            time_str, best_msg.name, len(best_msg.favorited_by)) + best_msg.text
+            time_str, best_msg.name, len(best_msg.favorited_by))
+        if best_msg.text: # Text could be Nonetype
+            text += best_msg.text
         return (text, best_msg.attachments)

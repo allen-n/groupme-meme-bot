@@ -27,22 +27,23 @@ logging_level = logging.DEBUG
 api_token = None
 memebot_token = None
 testbot_token = None
+GROUP_IDS = {"TESTGROUP": "59823729", "STEAK_PHILLY": "14970560"}
+GROUP_ID = GROUP_IDS["TESTGROUP"]
 
 if(os.path.exists("./apitoken.json")):  # Only true locally
     with open('./apitoken.json') as f:
         tokens = json.load(f)
         api_token = tokens["api_token"]
         memebot_token = tokens["testbot_token"]
+        GROUP_ID = GROUP_IDS["STEAK_PHILLY"]
 else:
     # For deployment on Heroku
     api_token = os.environ.get("API_TOKEN")
     memebot_token = os.environ.get("MEMEBOT_TOKEN")
     is_debug = False
     logging_level = logging.INFO
+    GROUP_ID = GROUP_IDS["STEAK_PHILLY"]
 
-# Constants
-GROUP_IDS = {"TESTGROUP": "59823729", "STEAK_PHILLY": "14970560"}
-GROUP_ID = GROUP_IDS["STEAK_PHILLY"]
 
 logging.basicConfig(stream=sys.stderr, level=logging_level)
 client = Client.from_token(api_token)
@@ -69,4 +70,4 @@ if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=is_debug, host="0.0.0.0", port=port)
 
-    # memebot.handle_bot_response("Memebot meme")  # Testing
+    # memebot.handle_bot_response("Memebot year")  # Testing
