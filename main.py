@@ -3,23 +3,13 @@ from memebot import Memebot
 
 # Groupy imports
 from groupy.client import Client
-from groupy.api.groups import Group
-from groupy.api.bots import Bot
-from groupy.api.messages import Message
-from groupy import attachments
 import groupy.exceptions
-
-# Fuzzy matching
-from fuzzywuzzy import process
-import re
 
 # other imports
 import os
 import logging
 import sys
 import json
-import time
-import requests
 
 # Env setup
 is_debug = True
