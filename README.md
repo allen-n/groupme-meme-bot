@@ -1,6 +1,31 @@
 # Groupme Meme Bot
 A toy project to build a bot for groupme with a flask-python backend.
 
+## Requirements 📋
+- Python 3.8+
+- PostgreSQL
+
+## Setup 🛠️
+1. Install uv (follow instructions [here](https://docs.astral.sh/uv/#getting-started))
+
+2. Clone the repository:
+```bash
+git clone https://github.com/yourusername/minimalistic-fastapi-template.git
+cd minimalistic-fastapi-template
+```
+
+3. Install dependencies with uv:
+```bash
+uv sync
+```
+
+4. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your database credentials
+```
+
+### Old Readme
 
 ### Runing Locally:
 1. Have Python 3.7 and pip installed locally (I reccoemnd using a [virtual environment](https://packaging.python.org/guides/installing-using-pip-and-virtual-environments/))

@@ -1,4 +1,7 @@
 env
 apitoken.json
 groups.json
-.vscode
+**/__pycache__
+**/*.pyc
+**/*.pyo
+.venv
