@@ -1,16 +1,18 @@
-from flask import Flask, request
-from memebot import Memebot
-
-# Groupy imports
-from groupy.client import Client
-import groupy.exceptions
+import json
+import logging
 
 # other imports
 import os
-import logging
 import sys
-import json
+
+import groupy.exceptions
 from dotenv import load_dotenv
+from flask import Flask, request
+
+# Groupy imports
+from groupy.client import Client
+
+from memebot import Memebot
 
 load_dotenv()
 
@@ -26,25 +28,16 @@ GROUP_ID = GROUP_IDS["TESTGROUP"]
 if not memebot_token or not api_token:
     raise Exception("API_TOKEN or MEMEBOT_TOKEN not found in environment variables")
 
-# if(os.path.exists("./apitoken.json")):  # Only true locally
-#     with open('./apitoken.json') as f:
-#         tokens = json.load(f)
-#         api_token = tokens["api_token"]
-#         memebot_token = tokens["testbot_token"]
-#         GROUP_ID = GROUP_IDS["STEAK_PHILLY"]
-# else:
-#     # For deployment on Heroku
-#     api_token = os.environ.get("API_TOKEN")
-#     memebot_token = os.environ.get("MEMEBOT_TOKEN")
-#     is_debug = False
-#     logging_level = logging.INFO
-#     GROUP_ID = GROUP_IDS["STEAK_PHILLY"]
-
 
 logging.basicConfig(stream=sys.stderr, level=logging_level)
 client = Client.from_token(api_token)
 memebot = Memebot(GROUP_ID, client, memebot_token, api_token)
 app = Flask(__name__)
+
+
+@app.route("/health")
+def health():
+    return "ok", 200
 
 
 @app.route("/", methods=["POST"])
