@@ -1,4 +1,4 @@
-env
+.env
 apitoken.json
 groups.json
 **/__pycache__
